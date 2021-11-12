@@ -99,7 +99,7 @@
 		let camera, camera2, camera3, camera4, camera5;
 
 		let index = 0, currentCamera = 1, models=[], modelList, irisPositionList;
-		let mainCameraPositionX = [-4,-3,0], mainCameraPositionY = [0,-2.5,0], mainCameraScale = [0.3,0.2,0.3]
+		let mainCameraPositionX = [-4,-3,-3], mainCameraPositionY = [0,-2.5,0], mainCameraScale = [0.3,0.2,0.2]
 		let modelPosition = [-8.5, -5.0, -5.5], modelScale = [6, 6, 6];
 		let eyeRotation = [THREE.MathUtils.degToRad(-8.4), THREE.MathUtils.degToRad(-8.4), 
 							THREE.MathUtils.degToRad(10), THREE.MathUtils.degToRad(10), 
@@ -380,23 +380,23 @@
 			if(mesh != undefined){
 				if(index < 5){
 					if(index%2 == 1){
-						mesh.skeleton.bones[8].getObjectByName("右目").rotation.x = eyeRotation[index-1];
-						mesh.skeleton.bones[8].getObjectByName("右目").rotation.y = 0;
+						mesh.getObjectByName("右目").rotation.x = eyeRotation[index-1];
+						mesh.getObjectByName("右目").rotation.y = 0;
 					}
 					else if(index%2 == 0){
-						mesh.skeleton.bones[8].getObjectByName("左目").rotation.x = eyeRotation[index-1];
-						mesh.skeleton.bones[8].getObjectByName("左目").rotation.y = 0;
+						mesh.getObjectByName("左目").rotation.x = eyeRotation[index-1];
+						mesh.getObjectByName("左目").rotation.y = 0;
 					}
 				}
 				else{
 					if(index%2 == 1){
-						mesh.skeleton.bones[8].getObjectByName("右目").rotation.x = 0;
-						mesh.skeleton.bones[8].getObjectByName("右目").rotation.y = eyeRotation[index-1];
+						mesh.getObjectByName("右目").rotation.x = 0;
+						mesh.getObjectByName("右目").rotation.y = eyeRotation[index-1];
 						//console.log(index);
 					}	
 					else if(index%2 == 0){
-						mesh.skeleton.bones[8].getObjectByName("左目").rotation.x = 0;
-						mesh.skeleton.bones[8].getObjectByName("左目").rotation.y = eyeRotation[index-1];
+						mesh.getObjectByName("左目").rotation.x = 0;
+						mesh.getObjectByName("左目").rotation.y = eyeRotation[index-1];
 					}
 				}
 			}
@@ -551,6 +551,7 @@
 					CopyAngle()
 					break;   // q
 				case 83: 
+					initSavePoint()
 					SavePoint();				
 					break;   // s
 			}

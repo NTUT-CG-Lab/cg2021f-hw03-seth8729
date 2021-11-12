@@ -2,17 +2,17 @@
     "irisPositionList": [
         {
             "location": "models/mmd/kizunaai/kizunaai.pmx",
-            "Right X negative angle": -7.804192442190555,
-            "Left X negative angle": -7.804192442190555,
-            "Right X positive angle": 10.40558992292074,
-            "Left X positive angle": 10.40558992292074,
-            "Right Y negative angle": -7.369996534877808,
-            "Left Y negative angle": -12.60031665640399,
-            "Right Y positive angle": 12.60031665640399,
-            "Left Y positive angle": 7.369996534877808
+            "Right X negative angle": 8.4,
+            "Left X negative angle": 8.4,
+            "Right X positive angle": -10,
+            "Left X positive angle": -10,
+            "Right Y negative angle": -8,
+            "Left Y negative angle": -12.6,
+            "Right Y positive angle": 12.6,
+            "Left Y positive angle": 8
         },
         {
-            "location": "models/mmd/kizunaai/kizunaai.pmx",
+            "location": "models/mmd/るいのれ式物述有栖_配布用フォルダ/物述有栖.pmx",
             "Right X negative angle": -14.827965640162054,
             "Left X negative angle": -14.827965640162054,
             "Right X positive angle": 16.648943876673183,
@@ -23,15 +23,15 @@
             "Left Y positive angle": 10.22289841934664
         },
         {
-            "location": "models/mmd/kizunaai/kizunaai.pmx",
-            "Right X negative angle": 0,
-            "Left X negative angle": 0,
-            "Right X positive angle": 0,
-            "Left X positive angle": 0,
-            "Right Y negative angle": 0,
-            "Left Y negative angle": 0,
-            "Right Y positive angle": 0,
-            "Left Y positive angle": 0
+            "location": "models/mmd/『天宮こころ(Kokoro Amamiya)』/『天宮こころ(Kokoro Amamiya)』.pmx",
+            "Right X negative angle": -18.079712491074794,
+            "Left X negative angle": -18.079712491074794,
+            "Right X positive angle": 13.137057277687436,
+            "Left X positive angle": 13.137057277687436,
+            "Right Y negative angle": -9.985156595640898,
+            "Left Y negative angle": -16.958916757675816,
+            "Right Y positive angle": 16.958916757675816,
+            "Left Y positive angle": 9.985156595640898
         }
     ]
 }
