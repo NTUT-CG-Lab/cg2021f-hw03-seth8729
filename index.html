@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<title>three.js webgl - loaders - MMD loader</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	<link type="text/css" rel="stylesheet" href="main.css">
+	<style>
+		body {
+			background-color: #fff;
+			color: #444;
+		}
+
+		a {
+			color: #08f;
+		}
+		.three{
+			position: absolute;
+			top: 0;
+			left: 0;
+			z-index: -1;
+		}
+	</style>
+</head>
+
+<body>
+	<div id="info"></div>
+
+	<script src="js/libs/ammo.wasm.js"></script>
+	<script src="scoreoutputer.min.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+	<script>
+		// 建構子 ScoreOutputer 接受一個字串，該字串為 csv 的檔案名稱
+		// 以下面範例，檔名就為 "109598105(總分: 6).csv"
+		var so = new ScoreOutputer("109598045");
+		so.installCSS(function () {
+			// 安裝 bootstrap 的 css，如果在 html 上方引用 bootstrap 5.1.1 的話就不用使用 installCSS ，注意一定要 bootstrap css 5.1.1 版
+			// installCSS 接收一個 callback 當作參數，作為成功安裝 bootstrap css 的回呼函式
+
+			//加入項目，分數，完成狀況
+			//第一個參數為 項目名稱
+			//第2個參數為 項目分數
+			//第3個參數為 完成狀況，有完成 true/未完成 false
+			//有幾個項目就呼叫幾個 addChild
+			//addChild 要比 renderModal 先呼叫
+			so.addChild("繪製出 5 個畫面", 1, true);
+			so.addChild("回答問題", 1, true);
+			so.addChild("可按鍵選擇上 / 下一隻角色", 1, true);
+			so.addChild("讀取作業 2 儲存的座標點在眼睛上繪製出分割線", 1, true);
+			so.addChild("可選擇當下控制哪個虹膜", 1, true);
+			so.addChild("按滑鼠左鍵控制虹膜移動，右鍵停止", 2, true);
+			so.addChild("複製參數至對應目標參數", 2, true);
+			so.addChild("可儲存虹膜轉動角度", 1, true);
+
+			//產生自評表，參數如下所示
+			so.renderModal(
+				//1. 自評表插入位置 (預設 document.body)
+				document.body,
+				//2. 自評表背景 (預設紅色)
+				'rgba(100,45,58,1)',
+				//3. 自評表文字顏色 (預設白色)
+				'white',
+				//4. 自評表文字大小 (預設 14pt)
+				'15pt',
+				//5. 自評表 checkbox 文字大小 (預設多少忘了)
+				'15px',
+				//6. 自評表標題 (預設 "自我評分表")
+				dialogTitle = "自我評分表"
+			);
+
+			//設定下載按鈕 <-- 一定要呼叫這個函數，不然沒有下載功能
+			so.installDownloadBtn();
+
+			//產生 "開啟自評表按鈕"
+			so.renderBtn(
+				//自評表按鈕插入位置
+				document.querySelector("#info"),
+				//自評表按鈕文字
+				"開啟自評表"
+			);
+		});
+	</script>
+	<script type="module">
+
+		import * as THREE from './build/three.module.js';
+		import { GUI } from './jsm/libs/dat.gui.module.js';
+		import { OrbitControls } from './jsm/controls/OrbitControls.js';
+		import { OutlineEffect } from './jsm/effects/OutlineEffect.js';
+		import { MMDLoader } from './jsm/loaders/MMDLoader.js';
+		import { MMDAnimationHelper } from './jsm/animation/MMDAnimationHelper.js';
+
+		let scene, renderer, effect;
+		let mesh, helper;
+		let SCREEN_WIDTH = window.innerWidth;
+		let SCREEN_HEIGHT = window.innerHeight;
+		let aspect = SCREEN_WIDTH / SCREEN_HEIGHT;
+		let frustumSize = 30;
+		let camera, camera2, camera3, camera4, camera5;
+
+		let index = 0, currentCamera = 1, models=[], modelList, irisPositionList;
+		let mainCameraPositionX = [-4,-3,0], mainCameraPositionY = [0,-2.5,0], mainCameraScale = [0.3,0.2,0.3]
+		let modelPosition = [-8.5, -5.0, -5.5], modelScale = [6, 6, 6];
+		let eyeRotation = [THREE.MathUtils.degToRad(-8.4), THREE.MathUtils.degToRad(-8.4), 
+							THREE.MathUtils.degToRad(10), THREE.MathUtils.degToRad(10), 
+							THREE.MathUtils.degToRad(8), THREE.MathUtils.degToRad(12.6), 
+							THREE.MathUtils.degToRad(-12.6),THREE.MathUtils.degToRad(-8)]
+		const mouse = new THREE.Vector2();
+		let lineGroup;
+		lineGroup = new THREE.Group();
+
+		Ammo().then(function (AmmoLib) {
+
+			Ammo = AmmoLib;
+
+			init();
+			animate();
+			
+
+		});
+
+		function init() {
+
+			const container = document.createElement('div');
+			container.classList.add('three')
+			document.body.appendChild(container);
+			camera = new THREE.OrthographicCamera(0.5 * frustumSize * aspect / - 2, 0.5 * frustumSize * aspect / 2, frustumSize / 2, frustumSize / - 2, 0.1, 1000);
+			camera2 = new THREE.OrthographicCamera(0.25 * frustumSize * aspect / - 2, 0.25 * frustumSize * aspect / 2, 0.5 * frustumSize / 2, 0.5 * frustumSize / - 2, 0.1, 1000);
+			camera3 = new THREE.OrthographicCamera(0.25 * frustumSize * aspect / - 2, 0.25 * frustumSize * aspect / 2, 0.5 * frustumSize / 2, 0.5 * frustumSize / - 2, 0.1, 1000);
+			camera4 = new THREE.OrthographicCamera(0.25 * frustumSize * aspect / - 2, 0.25 * frustumSize * aspect / 2, 0.5 * frustumSize / 2, 0.5 * frustumSize / - 2, 0.1, 1000);
+			camera5 = new THREE.OrthographicCamera(0.25 * frustumSize * aspect / - 2, 0.25 * frustumSize * aspect / 2, 0.5 * frustumSize / 2, 0.5 * frustumSize / - 2, 0.1, 1000);
+			camera.position.z = 30;
+			camera2.position.z = 30;
+			camera3.position.z = 30;
+			camera4.position.z = 30;
+			camera5.position.z = 30;
+
+			// scene
+
+			scene = new THREE.Scene();
+			const ambient = new THREE.AmbientLight(0x666666);
+			scene.add(ambient);
+
+			const directionalLight = new THREE.DirectionalLight(0x887766);
+			directionalLight.position.set(- 1, 1, 1).normalize();
+			scene.add(directionalLight);
+
+			//
+
+			renderer = new THREE.WebGLRenderer({ antialias: true });
+			renderer.setPixelRatio(window.devicePixelRatio);
+			renderer.setSize(window.innerWidth, window.innerHeight);
+			container.appendChild(renderer.domElement);
+			renderer.autoClear = false;
+			effect = new OutlineEffect(renderer);
+
+			// model
+			function onProgress(xhr) {
+
+				if (xhr.lengthComputable) {
+
+					const percentComplete = xhr.loaded / xhr.total * 100;
+					console.log(Math.round(percentComplete, 2) + '% downloaded');
+
+				}
+
+			}
+
+			const modelFile = ["models/mmd/kizunaai/kizunaai.pmx", "models/mmd/るいのれ式物述有栖_配布用フォルダ/物述有栖.pmx", "models/mmd/『天宮こころ(Kokoro Amamiya)』/『天宮こころ(Kokoro Amamiya)』.pmx"];
+
+			helper = new MMDAnimationHelper();
+
+			const loader = new MMDLoader();
+
+			loader.load(modelFile[0], function (object) {
+
+				models[0] = object;
+				mesh = object
+				mesh.name = "mainCamera";
+				mesh.scale.set(modelScale[index],modelScale[index],modelScale[index])
+				mesh.position.y = (modelPosition[index] - 10) * modelScale[index]; //18.5 zoom 6
+				mesh.position.z = -10
+				scene.add(mesh);
+
+			}, onProgress, null);
+
+			loader.load(modelFile[1], function (object) {
+				models[1] = object;
+			}, onProgress, null);
+
+			loader.load(modelFile[2], function (object) {
+				models[2] = object;
+			}, onProgress, null);
+
+			
+			$.getJSON("eyePosition.json", (data) =>{
+				modelList = data.modelList;
+				console.log(modelList)
+			});
+			$.getJSON("irisPosition.json", (data) =>{
+				irisPositionList = data.irisPositionList;
+				console.log(irisPositionList)
+			});
+			//
+
+			window.addEventListener('resize', onWindowResize);
+			window.addEventListener("keydown", keydown);
+			document.addEventListener( 'pointerdown', onPointerDown );
+			
+			//鏡頭控制
+			window.addEventListener('contextmenu', function (e) {if (e.button == 2) {
+				e.preventDefault();
+			}}, false);
+			scene.add(lineGroup)
+			
+		}
+
+		function onWindowResize() {
+
+			SCREEN_WIDTH = window.innerWidth;
+			SCREEN_HEIGHT = window.innerHeight;
+			aspect = SCREEN_WIDTH / SCREEN_HEIGHT;
+
+			effect.setSize(SCREEN_WIDTH, SCREEN_HEIGHT);
+
+			camera.left = 0.5 * frustumSize * aspect / - 2;
+			camera.right = 0.5 * frustumSize * aspect / 2;
+			camera.top = frustumSize / 2;
+			camera.bottom = - frustumSize / 2;
+			camera.updateProjectionMatrix();
+
+			camera2.left = 0.25 * frustumSize * aspect / - 2;
+			camera2.right = 0.25 * frustumSize * aspect / 2;
+			camera2.top = 0.5 * frustumSize / 2;
+			camera2.bottom = - 0.5 * frustumSize / 2;
+			camera2.updateProjectionMatrix();
+
+			camera3.left = 0.25 * frustumSize * aspect / - 2;
+			camera3.right = 0.25 * frustumSize * aspect / 2;
+			camera3.top = 0.5 * frustumSize / 2;
+			camera3.bottom = - 0.5 * frustumSize / 2;
+			camera3.updateProjectionMatrix();
+
+			camera4.left = 0.25 * frustumSize * aspect / - 2;
+			camera4.right = 0.25 * frustumSize * aspect / 2;
+			camera4.top = 0.5 * frustumSize / 2;
+			camera4.bottom = - 0.5 * frustumSize / 2;
+			camera4.updateProjectionMatrix();
+
+			camera5.left = 0.25 * frustumSize * aspect / - 2;
+			camera5.right = 0.25 * frustumSize * aspect / 2;
+			camera5.top = 0.5 * frustumSize / 2;
+			camera5.bottom = - 0.5 * frustumSize / 2;
+			camera5.updateProjectionMatrix();
+		}
+		//
+
+		function changeModel() {
+				console.log(index)
+				scene.remove(mesh);
+				currentCamera = 1;
+
+				mesh = models[index];
+				mesh.scale.set(modelScale[index],modelScale[index],modelScale[index])
+				mesh.position.y = (modelPosition[index] - 10) * modelScale[index]; //18.5 zoom 6
+				scene.add(mesh);
+		}
+
+		function drawLine(eye, size){
+			let material, geometry, line, position = [], offset;
+			lineGroup.clear()
+			if (modelList != undefined){
+				if(eye == "left"){
+					offset = (modelList[index].line_locationy_3-modelList[index].line_locationy_1)/4;
+					material = new THREE.LineBasicMaterial( { color: 0x00ff00} );
+					let x1 = modelList[index].line_locationx_1, x2 = modelList[index].line_locationx_2, y1 = modelList[index].line_locationy_1, y2 = modelList[index].line_locationy_2;
+					for(var i = 0 ; i < 5;y1 += offset, y2 += offset, i++){
+						position[0] = new THREE.Vector3( x1-0.1, y1 + modelPosition[index], 3);
+						position[1] = new THREE.Vector3( x2+0.1, y2 + modelPosition[index], 3);
+						geometry = new THREE.BufferGeometry().setFromPoints( position );
+						line = new THREE.Line( geometry, material );
+						line.scale.set(size,size,size)
+						lineGroup.add(line)
+					}
+					x1 = modelList[index].line_locationx_1, x2 = modelList[index].line_locationx_3, y1 = modelList[index].line_locationy_1, y2 = modelList[index].line_locationy_3;
+					material = new THREE.LineBasicMaterial( { color: 0x0ff0000} );
+					offset = (modelList[index].line_locationx_2-modelList[index].line_locationx_1)/8;
+					for(var i = 0 ; i < 9; x1 += offset, x2 += offset, i++){
+						position[0] = new THREE.Vector3( x1, y1 + modelPosition[index]+0.1, 3);
+						position[1] = new THREE.Vector3( x2, y2 + modelPosition[index]-0.1, 3);
+						geometry = new THREE.BufferGeometry().setFromPoints( position );
+						line = new THREE.Line( geometry, material );
+						line.scale.set(size,size,size)
+						lineGroup.add(line)
+					}
+				}
+				if(eye == "right"){
+					offset = (modelList[index].line_locationy_3-modelList[index].line_locationy_1)/4;
+					let x1 = -modelList[index].line_locationx_1, x2 = -modelList[index].line_locationx_2, y1 = modelList[index].line_locationy_1, y2 = modelList[index].line_locationy_2;
+					for(var i = 0 ; i < 5; y1 += offset, y2 += offset, i++){
+						position[0] = new THREE.Vector3( x1+0.1, y1 + modelPosition[index], 3);
+						position[1] = new THREE.Vector3( x2-0.1, y2 + modelPosition[index], 3);
+						material = new THREE.LineBasicMaterial( { color: 0x00ff00} );
+						geometry = new THREE.BufferGeometry().setFromPoints( position );
+						line = new THREE.Line( geometry, material );
+						line.scale.set(size,size,size)
+						lineGroup.add(line)
+					}
+					x1 = -modelList[index].line_locationx_1, x2 = -modelList[index].line_locationx_3, y1 = modelList[index].line_locationy_1, y2 = modelList[index].line_locationy_3;
+					offset = (modelList[index].line_locationx_2-modelList[index].line_locationx_1)/8;
+					for(var i = 0 ; i < 9; x1 -= offset, x2 -= offset, i++){
+						position[0] = new THREE.Vector3( x1, y1 + modelPosition[index]+0.1, 3);
+						position[1] = new THREE.Vector3( x2, y2 + modelPosition[index]-0.1, 3);
+						material = new THREE.LineBasicMaterial( { color: 0x0ff0000} );
+						geometry = new THREE.BufferGeometry().setFromPoints( position );
+						line = new THREE.Line( geometry, material );
+						line.scale.set(size,size,size)
+						lineGroup.add(line)
+					}
+				}
+			}
+		}
+
+		function drawMainLine(eye, size){
+			let material, geometry, line, position = [], offset;
+			lineGroup.clear()
+			if (modelList != undefined){
+				if(eye == "left"){
+					offset = (modelList[index].line_locationy_3-modelList[index].line_locationy_1)/4;
+					material = new THREE.LineBasicMaterial( { color: 0x00ff00} );
+					let x1 = modelList[index].line_locationx_1, x2 = modelList[index].line_locationx_2, y1 = modelList[index].line_locationy_1, y2 = modelList[index].line_locationy_2;
+					for(var i = 0 ; i < 5;y1 += offset, y2 += offset, i++){
+						position[0] = new THREE.Vector3( x1-0.1 + mainCameraPositionX[index], y1 + modelPosition[index] + mainCameraPositionY[index], 3);
+						position[1] = new THREE.Vector3( x2+0.1 + mainCameraPositionX[index], y2 + modelPosition[index] + mainCameraPositionY[index], 3);
+						geometry = new THREE.BufferGeometry().setFromPoints( position );
+						line = new THREE.Line( geometry, material );
+						line.scale.set(size,size,size)
+						lineGroup.add(line)
+					}
+					x1 = modelList[index].line_locationx_1, x2 = modelList[index].line_locationx_3, y1 = modelList[index].line_locationy_1, y2 = modelList[index].line_locationy_3;
+					material = new THREE.LineBasicMaterial( { color: 0x0ff0000} );
+					offset = (modelList[index].line_locationx_2-modelList[index].line_locationx_1)/8;
+					for(var i = 0 ; i < 9; x1 += offset, x2 += offset, i++){
+						position[0] = new THREE.Vector3( x1 + mainCameraPositionX[index], y1 + modelPosition[index] + mainCameraPositionY[index]+0.1, 3);
+						position[1] = new THREE.Vector3( x2 + mainCameraPositionX[index], y2 + modelPosition[index] + mainCameraPositionY[index]-0.1, 3);
+						geometry = new THREE.BufferGeometry().setFromPoints( position );
+						line = new THREE.Line( geometry, material );
+						line.scale.set(size,size,size)
+						lineGroup.add(line)
+					}
+				}
+				if(eye == "right"){
+					offset = (modelList[index].line_locationy_3-modelList[index].line_locationy_1)/4;
+					let x1 = -modelList[index].line_locationx_1, x2 = -modelList[index].line_locationx_2, y1 = modelList[index].line_locationy_1, y2 = modelList[index].line_locationy_2;
+					for(var i = 0 ; i < 5; y1 += offset, y2 += offset, i++){
+						position[0] = new THREE.Vector3( x1+0.1 + mainCameraPositionX[index], y1 + modelPosition[index] + mainCameraPositionY[index], 3);
+						position[1] = new THREE.Vector3( x2-0.1 + mainCameraPositionX[index], y2 + modelPosition[index] + mainCameraPositionY[index], 3);
+						material = new THREE.LineBasicMaterial( { color: 0x00ff00} );
+						geometry = new THREE.BufferGeometry().setFromPoints( position );
+						line = new THREE.Line( geometry, material );
+						line.scale.set(size,size,size)
+						lineGroup.add(line)
+					}
+					x1 = -modelList[index].line_locationx_1, x2 = -modelList[index].line_locationx_3, y1 = modelList[index].line_locationy_1, y2 = modelList[index].line_locationy_3;
+					offset = (modelList[index].line_locationx_2-modelList[index].line_locationx_1)/8;
+					for(var i = 0 ; i < 9; x1 -= offset, x2 -= offset, i++){
+						position[0] = new THREE.Vector3( x1 + mainCameraPositionX[index], y1 + modelPosition[index] + mainCameraPositionY[index]+0.1, 3);
+						position[1] = new THREE.Vector3( x2 + mainCameraPositionX[index], y2 + modelPosition[index] + mainCameraPositionY[index]-0.1, 3);
+						material = new THREE.LineBasicMaterial( { color: 0x0ff0000} );
+						geometry = new THREE.BufferGeometry().setFromPoints( position );
+						line = new THREE.Line( geometry, material );
+						line.scale.set(size,size,size)
+						lineGroup.add(line)
+					}
+				}
+			}
+		}
+
+		function RotateEye(index){
+			if(mesh != undefined){
+				if(index < 5){
+					if(index%2 == 1){
+						mesh.skeleton.bones[8].getObjectByName("右目").rotation.x = eyeRotation[index-1];
+						mesh.skeleton.bones[8].getObjectByName("右目").rotation.y = 0;
+					}
+					else if(index%2 == 0){
+						mesh.skeleton.bones[8].getObjectByName("左目").rotation.x = eyeRotation[index-1];
+						mesh.skeleton.bones[8].getObjectByName("左目").rotation.y = 0;
+					}
+				}
+				else{
+					if(index%2 == 1){
+						mesh.skeleton.bones[8].getObjectByName("右目").rotation.x = 0;
+						mesh.skeleton.bones[8].getObjectByName("右目").rotation.y = eyeRotation[index-1];
+						//console.log(index);
+					}	
+					else if(index%2 == 0){
+						mesh.skeleton.bones[8].getObjectByName("左目").rotation.x = 0;
+						mesh.skeleton.bones[8].getObjectByName("左目").rotation.y = eyeRotation[index-1];
+					}
+				}
+			}
+			
+		}
+
+		function CopyAngle(){
+			switch( currentCamera ){
+				case 1: 
+					eyeRotation[1] = eyeRotation[0];
+					currentCamera = 2;
+					break;   // 1
+				case 3: 
+					eyeRotation[3] = eyeRotation[2];
+					currentCamera = 4;
+					break;   // 2
+				case 5: 
+					eyeRotation[7] = -eyeRotation[4];
+					currentCamera = 8;
+					break;   // d
+				case 7: 
+					eyeRotation[5] = -eyeRotation[6];
+					currentCamera = 6;
+					break;   // q
+			}
+		}
+
+		function animate() {
+
+			requestAnimationFrame(animate);
+			render();
+
+		}
+
+		function render() {
+
+			effect.clear();
+
+			if(currentCamera%2 == 0){
+				drawLine("left", 6);
+				camera.position.x = -mainCameraPositionX[index]; 
+			}
+			if(currentCamera%2 == 1){
+				drawLine("right", 6);
+				camera.position.x = mainCameraPositionX[index]; 	
+			}
+			RotateEye(currentCamera);
+			camera.scale.set(mainCameraScale[index], mainCameraScale[index], mainCameraScale[index])		
+			camera.position.y = mainCameraPositionY[index]; 	
+			effect.setViewport(0, 0, SCREEN_WIDTH / 2, SCREEN_HEIGHT);
+			effect.render(scene, camera);
+			lineGroup.clear()
+			//////////////////////////////////
+			if(currentCamera == 1)
+				drawLine("right", 6);
+				
+			if(currentCamera == 2)
+				drawLine("left", 6);
+			RotateEye(1);
+			RotateEye(2);
+			effect.setViewport(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, SCREEN_WIDTH / 4, SCREEN_HEIGHT / 2);
+			effect.render(scene, camera2);
+			lineGroup.clear()
+			//////////////////////////////////
+			if(currentCamera == 3)
+				drawLine("right", 6);	
+			if(currentCamera == 4)
+				drawLine("left", 6);
+			RotateEye(3);
+			RotateEye(4);
+			effect.setViewport(SCREEN_WIDTH / 2 + SCREEN_WIDTH / 4, SCREEN_HEIGHT / 2, SCREEN_WIDTH / 4, SCREEN_HEIGHT / 2);
+			effect.render(scene, camera3);			
+			lineGroup.clear()
+			//////////////////////////////////
+			if(currentCamera == 5)
+				drawLine("right", 6);
+			if(currentCamera == 6)
+				drawLine("left", 6);
+			RotateEye(5);
+			RotateEye(6);
+			effect.setViewport(SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 4, SCREEN_HEIGHT / 2);
+			effect.render(scene, camera4); 					
+			lineGroup.clear()
+			//////////////////////////////////
+			if(currentCamera == 7)
+				drawLine("right", 6);
+			if(currentCamera == 8)
+				drawLine("left", 6);
+			RotateEye(7);
+			RotateEye(8);
+			effect.setViewport(SCREEN_WIDTH / 2 + SCREEN_WIDTH / 4, 0, SCREEN_WIDTH / 4, SCREEN_HEIGHT / 2);
+			effect.render(scene, camera5);
+			lineGroup.clear();
+			
+		}
+
+		function initSavePoint(){	
+			irisPositionList[index]["Right X negative angle"] = THREE.MathUtils.radToDeg(-eyeRotation[0]),
+			irisPositionList[index]["Left X negative angle"] = THREE.MathUtils.radToDeg(-eyeRotation[1]),
+			irisPositionList[index]["Right X positive angle"] = THREE.MathUtils.radToDeg(-eyeRotation[2]),
+			irisPositionList[index]["Left X positive angle"] = THREE.MathUtils.radToDeg(-eyeRotation[3]),
+			irisPositionList[index]["Right Y negative angle"] = THREE.MathUtils.radToDeg(-eyeRotation[4]),
+			irisPositionList[index]["Left Y negative angle"] = THREE.MathUtils.radToDeg(-eyeRotation[5]),
+			irisPositionList[index]["Right Y positive angle"] = THREE.MathUtils.radToDeg(-eyeRotation[6]),
+			irisPositionList[index]["Left Y positive angle"] = THREE.MathUtils.radToDeg(-eyeRotation[7])
+		}
+
+		function LoadPoint(){	
+			eyeRotation[0] = THREE.MathUtils.degToRad(-irisPositionList[index]["Right X negative angle"])
+			eyeRotation[1] = THREE.MathUtils.degToRad(-irisPositionList[index]["Left X negative angle"])
+			eyeRotation[2] = THREE.MathUtils.degToRad(-irisPositionList[index]["Right X positive angle"])
+			eyeRotation[3] = THREE.MathUtils.degToRad(-irisPositionList[index]["Left X positive angle"])
+			eyeRotation[4] = THREE.MathUtils.degToRad(-irisPositionList[index]["Right Y negative angle"])
+			eyeRotation[5] = THREE.MathUtils.degToRad(-irisPositionList[index]["Left Y negative angle"])
+			eyeRotation[6] = THREE.MathUtils.degToRad(-irisPositionList[index]["Right Y positive angle"])
+			eyeRotation[7] = THREE.MathUtils.degToRad(-irisPositionList[index]["Left Y positive angle"])
+			console.log(eyeRotation)
+		}
+
+		function keydown (e){
+			//Prevent the user to scroll in the page if the pen is in an iFrame
+
+			e.preventDefault();
+			console.log(e.which)
+			switch( e.which ){
+				case 49: 
+					if (currentCamera > 0)
+						currentCamera -= 1;
+					break;   // 1
+				case 50: 
+					if (currentCamera < 8)
+						currentCamera += 1;
+					break;   // 2
+				case 65: 
+					if (index > 0){
+						initSavePoint()
+						index -= 1;
+						LoadPoint()
+						changeModel()
+					}
+					break;   // a
+					
+				case 68: 
+					if (index < 2){
+						initSavePoint()
+						index += 1;
+						LoadPoint()
+						changeModel()
+					}	
+					break;   // d
+				case 81: 
+					CopyAngle()
+					break;   // q
+				case 83: 
+					SavePoint();				
+					break;   // s
+			}
+			
+		}
+		
+		function SavePoint(){
+			var dataJSON = { irisPositionList }; 
+			var dataJson = JSON.stringify(dataJSON, null, 4); // // I try  JSON.stringify(scene) but it is wrong solution too
+			downloadTextFile(dataJson,"irisPosition.json")
+		}
+
+		function downloadTextFile(text, name) {
+			const a = document.createElement('a');
+			const type = name.split(".").pop();
+			a.href = URL.createObjectURL( new Blob([text], { type:`text/${type === "txt" ? "plain" : type}` }) );
+			a.download = name;
+			a.click();
+		}
+
+		function onPointerMove( event ) {
+
+			if ( event.isPrimary === false) return;
+			if(currentCamera < 5)
+				eyeRotation[currentCamera-1] = mouse.y - (-( event.clientY / window.innerHeight ) * 2 + 1);
+			else
+				eyeRotation[currentCamera-1] = (( event.clientX / window.innerWidth ) * 2 - 1) - mouse.x;
+			
+		}
+
+		function onPointerDown( event ) {
+
+			if ( event.isPrimary === false ) return;
+			if(event.button == 0){
+				
+				document.addEventListener( 'pointermove', onPointerMove );
+				mouse.x = (( event.clientX / window.innerWidth ) * 2 - 1);
+				mouse.y = (-( event.clientY / window.innerHeight ) * 2 + 1);
+			}
+			if(event.button == 2){
+				
+				document.removeEventListener( 'pointermove', onPointerMove );
+				
+			}
+		}
+
+	</script>
+
+</body>
+
+</html>
+
+

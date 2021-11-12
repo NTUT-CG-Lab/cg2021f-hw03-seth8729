@@ -1,0 +1,37 @@
+{
+    "irisPositionList": [
+        {
+            "location": "models/mmd/kizunaai/kizunaai.pmx",
+            "Right X negative angle": -7.804192442190555,
+            "Left X negative angle": -7.804192442190555,
+            "Right X positive angle": 10.40558992292074,
+            "Left X positive angle": 10.40558992292074,
+            "Right Y negative angle": -7.369996534877808,
+            "Left Y negative angle": -12.60031665640399,
+            "Right Y positive angle": 12.60031665640399,
+            "Left Y positive angle": 7.369996534877808
+        },
+        {
+            "location": "models/mmd/kizunaai/kizunaai.pmx",
+            "Right X negative angle": -14.827965640162054,
+            "Left X negative angle": -14.827965640162054,
+            "Right X positive angle": 16.648943876673183,
+            "Left X positive angle": 16.648943876673183,
+            "Right Y negative angle": -10.22289841934664,
+            "Left Y negative angle": -20.842033211536172,
+            "Right Y positive angle": 20.842033211536172,
+            "Left Y positive angle": 10.22289841934664
+        },
+        {
+            "location": "models/mmd/kizunaai/kizunaai.pmx",
+            "Right X negative angle": 0,
+            "Left X negative angle": 0,
+            "Right X positive angle": 0,
+            "Left X positive angle": 0,
+            "Right Y negative angle": 0,
+            "Left Y negative angle": 0,
+            "Right Y positive angle": 0,
+            "Left Y positive angle": 0
+        }
+    ]
+}
